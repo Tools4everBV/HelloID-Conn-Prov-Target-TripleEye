@@ -1,0 +1,44 @@
+[
+    {
+        "key": "HookId",
+        "type": "input",
+        "defaultValue": "",
+        "templateOptions": {
+            "label": "HookId",
+            "description": "The HookId to connect to the API",
+            "required": true
+        }
+    },
+    {
+        "key": "token",
+        "type": "input",
+        "defaultValue": "",
+        "templateOptions": {
+            "type": "password",
+            "label": "Token",
+            "description": "The Token to connect to the API",
+            "required": true
+        }
+    },
+    {
+        "key": "signatureCode",
+        "type": "input",
+        "defaultValue": "",
+        "templateOptions": {
+            "type": "password",
+            "label": "SignatureCode",
+            "description": "The SignatureCode to connect to the API",
+            "required": true
+        }
+    },
+    {
+        "key": "BaseUrl",
+        "type": "input",
+        "defaultValue": "",
+        "templateOptions": {
+            "label": "BaseUrl",
+            "description": "The URL to the API.",
+            "required": true
+        }
+    }
+]
