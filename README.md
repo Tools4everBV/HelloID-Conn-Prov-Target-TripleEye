@@ -42,8 +42,8 @@ The following features are available:
 | Feature                                   | Supported | Actions                                 | Remarks |
 | ----------------------------------------- | --------- | --------------------------------------- | ------- |
 | **Account Lifecycle**                     | ✅         | Create, Update, Enable, Disable, Delete |         |
-| **Permissions AccessGroups**              | ✅         | Retrieve, Grant, Revoke                 | Static  |
-| **Permissions Departments**               | ✅         | Retrieve, Grant, Revoke                 | Static  |
+| **Permissions AccessGroups**              | ✅         | Retrieve, Grant, Revoke                 |   |
+| **Permissions Departments**               | ✅         | Retrieve, Grant, Revoke                 |   |
 | **Resources**                             | ❌         | -                                       |         |
 | **Entitlement Import: Accounts**          | ❌         | *No API endpoint available*             |         |
 | **Entitlement Import: Permissions**       | ❌         | *No API endpoint available*             |         |
