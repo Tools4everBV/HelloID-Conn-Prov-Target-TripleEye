@@ -116,7 +116,7 @@ try {
                     $null = Invoke-RestMethod @splatUpdateParams
                 } catch {
                     # Both when departmentId or employeeId are not found, the API returns a 404
-                    if (-not $_.Exception.Response.StatusCode -eq 404) {
+                    if (-not ($_.Exception.Response.StatusCode -eq 404)) {
                         throw $_
                     }
                 }

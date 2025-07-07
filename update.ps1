@@ -113,8 +113,6 @@ try {
                 $body["$($_)"] = "$($actionContext.Data.$_)"
             }
             $body['employeeId'] = $actionContext.References.Account
-            $body['startStamp'] = (Get-Date).ToUniversalTime().ToString('o')
-            $body['endStamp'] = (Get-Date).AddDays(2).ToUniversalTime().ToString('o')
             $bodyJson = $body | ConvertTo-Json -Compress
 
             $headers['X-Signature'] = Get-Signature ($bodyJson)

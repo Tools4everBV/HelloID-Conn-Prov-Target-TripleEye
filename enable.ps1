@@ -99,6 +99,8 @@ try {
             $bodyJson = @{
                 employeeId     = $actionContext.References.Account
                 accessDisabled = $false
+                startStamp     = (Get-Date).ToUniversalTime().ToString('o')
+                endStamp       = $null
             } | ConvertTo-Json -Compress
             $headers['X-Signature'] = Get-Signature ($bodyJson)
             $splatUpdateParams = @{

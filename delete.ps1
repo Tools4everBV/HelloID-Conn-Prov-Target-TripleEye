@@ -96,7 +96,7 @@ try {
     switch ($action) {
         'DeleteAccount' {
             $bodyJson = @{
-                Id = $actionContext.References.Account
+                id = $actionContext.References.Account
             } | ConvertTo-Json -Compress
             $headers['X-Signature'] = Get-Signature ($bodyJson)
             $splatDeleteParams = @{

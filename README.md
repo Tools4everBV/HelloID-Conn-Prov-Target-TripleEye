@@ -85,7 +85,7 @@ The field mapping can be imported by using the _fieldMapping.json_ file.
 
 ### Account Reference
 
-The account reference is populated with the property `Id` property from _TripleEye_.
+The account reference is populated with the property `id` property from _TripleEye_.
 
 ## Remarks
 ### Invitation Code

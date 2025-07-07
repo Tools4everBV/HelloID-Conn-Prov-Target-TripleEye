@@ -89,7 +89,7 @@ try {
         try {
             $correlatedAccount = Invoke-RestMethod @splatCorrelateEmployee
         } catch {
-            if (-not $_.Exception.Response.StatusCode -eq 404) {
+            if (-not ($_.Exception.Response.StatusCode -eq 404)) {
                 throw $_
             }
         }
@@ -104,11 +104,14 @@ try {
     # Process
     switch ($action) {
         'CreateAccount' {
+            if ($null -ne $actionContext.Data.accessDisabled) {
+                $actionContext.Data.accessDisabled = [bool]::Parse($actionContext.Data.accessDisabled)
+            }
             $headers['X-Signature'] = Get-Signature ($actionContext.Data | ConvertTo-Json -Compress)
             $splatCreateParams = @{
                 Uri         = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.HookId)/organisation/employees"
                 Method      = 'POST'
-                Body        = $actionContext.Data | ConvertTo-Json
+                Body        = $actionContext.Data | ConvertTo-Json -Compress
                 ContentType = 'application/json; charset=utf-8'
                 Headers     = $headers
             }
