@@ -25,6 +25,7 @@
     - [Body Signature](#body-signature)
     - [Correlation Based on Email Address](#correlation-based-on-email-address)
     - [Name property](#name-property)
+    - [Import Permissions](#import-permissions)
   - [Development resources](#development-resources)
     - [API endpoints](#api-endpoints)
     - [API documentation](#api-documentation)
@@ -42,11 +43,11 @@ The following features are available:
 | Feature                                   | Supported | Actions                                 | Remarks |
 | ----------------------------------------- | --------- | --------------------------------------- | ------- |
 | **Account Lifecycle**                     | ✅         | Create, Update, Enable, Disable, Delete |         |
-| **Permissions AccessGroups**              | ✅         | Retrieve, Grant, Revoke                 |   |
-| **Permissions Departments**               | ✅         | Retrieve, Grant, Revoke                 |   |
+| **Permissions AccessGroups**              | ✅         | Retrieve, Grant, Revoke                 |         |
+| **Permissions Departments**               | ✅         | Retrieve, Grant, Revoke                 |         |
 | **Resources**                             | ❌         | -                                       |         |
-| **Entitlement Import: Accounts**          | ❌         | *No API endpoint available*             |         |
-| **Entitlement Import: Permissions**       | ❌         | *No API endpoint available*             |         |
+| **Entitlement Import: Accounts**          | ✅         |                                         |         |
+| **Entitlement Import: Permissions**       | ✅         |                                         |         |
 | **Governance Reconciliation Resolutions** | ❌         | -                                       |         |
 
 ## Getting started
@@ -97,12 +98,16 @@ Existing accounts or permissions that are required to be managed by HelloID must
 ### Body Signature
 A signature is used to authenticate the request body, ensuring its integrity. Therefore, each web call requires a unique signature calculation. The current connector already handles this, but keep it in mind when adjusting the code.
 
-
 ### Correlation Based on Email Address
 The connector relies on email addresses to correlate and match records between systems. Ensure that email addresses are accurately maintained and consistent across systems to avoid issues with data synchronization and matching.
 
 ### Name property
 The `Name` property can only be 50 characters long. Characters beyond the 50th will be ignored. In the field mapping, there is a complex mapping that uses a Substring function to select only the first 50 characters. This is done to avoid continuous differences during update actions.
+
+### Import Permissions
+The user IDs are not included when fetching permissions.
+Because of this, the import script for permissions needs to first fetch all permissions, then fetch all users separately, and finally retrieve the active permissions for each user individually.
+
 
 ## Development resources
 
@@ -110,17 +115,20 @@ The `Name` property can only be 50 characters long. Characters beyond the 50th w
 
 The following endpoints are used by the connector
 
-| Endpoint                                | Description                           |
-| --------------------------------------- | ------------------------------------- |
-| /organisation/employees/findOne         | Retrieve (single) user information    |
-| /organisation/employees                 | Create and Update account information |
-| /organisation/employees/<id>            | Delete user account                   |
-| /organisation/accessGroups              | Retrieve access group information     |
-| /organisation/linkAccessGroupEmployee   | Grant access group membership         |
-| /organisation/unlinkAccessGroupEmployee | Revoke access group membership        |
-| /organisation/departments               | Retrieve department information       |
-| /organisation/linkDepartmentEmployee    | Grant department membership           |
-| /organisation/unlinkDepartmentEmployee  | Revoke department membership          |
+| Endpoint                                    | Description                                                  |
+| ------------------------------------------- | ------------------------------------------------------------ |
+| /organisation/employees/findOne             | Retrieve (single) user information                           |
+| /organisation/employees                     | Retrieve all users and Create and Update account information |
+| /organisation/employees/<id>                | Delete user account                                          |
+| /organisation/employees/<id>/getPermissions | Retrieve permission information for user                     |
+| /organisation/accessGroups                  | Retrieve access group information                            |
+| /organisation/linkAccessGroupEmployee       | Grant access group membership                                |
+| /organisation/unlinkAccessGroupEmployee     | Revoke access group membership                               |
+| /organisation/departments                   | Retrieve department information                              |
+| /organisation/linkDepartmentEmployee        | Grant department membership                                  |
+| /organisation/unlinkDepartmentEmployee      | Revoke department membership                                 |
+| /organisation/unlinkDepartmentEmployee      | Revoke department membership                                 |
+| /organisation/unlinkDepartmentEmployee      | Revoke department membership                                 |
 
 ### API documentation
 > [!NOTE]
