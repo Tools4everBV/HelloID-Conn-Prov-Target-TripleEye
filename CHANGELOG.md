@@ -2,7 +2,18 @@
 
 All notable changes to this project will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com), and this project adheres to [Semantic Versioning](https://semver.org).
 
-## [1.0.2] - 24-10-2025
+## [1.1.2] - 14-11-2025
+
+### Fixed
+
+- Added paging for both account and permission import due to the fact that only 250 objects where imported.
+  - Note that the import for permission / departments has not been tested.
+
+### Added
+- Import account script
+- Import permission scripts
+
+## [1.1.1] - 24-10-2025
 
 ### Added
 - Import account script

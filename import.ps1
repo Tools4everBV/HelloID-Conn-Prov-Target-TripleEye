@@ -23,7 +23,8 @@ function Resolve-TripleEyeError {
         }
         if (-not [string]::IsNullOrEmpty($ErrorObject.ErrorDetails.Message)) {
             $httpErrorObj.ErrorDetails = $ErrorObject.ErrorDetails.Message
-        } elseif ($ErrorObject.Exception.GetType().FullName -eq 'System.Net.WebException') {
+        }
+        elseif ($ErrorObject.Exception.GetType().FullName -eq 'System.Net.WebException') {
             if ($null -ne $ErrorObject.Exception.Response) {
                 $streamReaderResponse = [System.IO.StreamReader]::new($ErrorObject.Exception.Response.GetResponseStream()).ReadToEnd()
                 if (-not [string]::IsNullOrEmpty($streamReaderResponse)) {
@@ -34,7 +35,8 @@ function Resolve-TripleEyeError {
         try {
             $errorDetailsObject = ($httpErrorObj.ErrorDetails | ConvertFrom-Json)
             $httpErrorObj.FriendlyMessage = $errorDetailsObject.error.message
-        } catch {
+        }
+        catch {
             $httpErrorObj.FriendlyMessage = "Error: [$($httpErrorObj.ErrorDetails)] [$($_.Exception.Message)]"
         }
         Write-Output $httpErrorObj
@@ -70,61 +72,75 @@ try {
         'X-Signature' = Get-SignatureForEmptyBody
     }
 
-    $splatGetEmployees = @{
-        Uri     = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.HookId)/organisation/employees"
-        Method  = 'GET'
-        Headers = $headers
+    $skip = 250
+    $totalAccounts = 0
+    do {
+        $filter = @{ skip = $skip } | ConvertTo-Json -Compress
+        $encodedFilter = [System.Web.HttpUtility]::UrlEncode($filter)
+
+        $splatGetEmployees = @{
+            Uri     = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.HookId)/organisation/employees?filter=$encodedFilter"
+            Method  = 'GET'
+            Headers = $headers
+        }
+        $importedAccounts = Invoke-RestMethod @splatGetEmployees
+
+        if ($actionContext.DryRun) {
+            $importedAccounts = $importedAccounts | Select-Object -First 10
+        }
+
+        $count = $importedAccounts.count
+        $totalAccounts += $count
+        $skip += 250
+
+        foreach ($importedAccount in $importedAccounts) {
+            # Making sure only fieldMapping fields are imported
+            $data = @{}
+            foreach ($field in $actionContext.ImportFields) {
+                $data.$field = $importedAccount.$field
+            }
+
+            # Set Enabled based on importedAccount status
+            $isEnabled = $false
+            if ($null -ne $importedAccount.accessDisabled) {
+                $isEnabled = -not($importedAccount.accessDisabled)
+            }
+
+            # Make sure the displayName has a value
+            $displayName = "$($importedAccount.name)".trim()
+            if ([string]::IsNullOrEmpty($displayName)) {
+                $displayName = $importedAccount.id
+            }
+
+            # Make sure the userName has a value
+            $username = "$($importedAccount.email)".trim()
+            if ([string]::IsNullOrEmpty($importedAccount.email)) {
+                $username = $importedAccount.Id
+            }
+
+            # Return the result
+            Write-Output @{
+                AccountReference = $importedAccount.id
+                displayName      = $displayName
+                UserName         = $username
+                Enabled          = $isEnabled
+                Data             = $data
+            }
+        }
     }
-    $importedAccounts = Invoke-RestMethod @splatGetEmployees
-
-
-    if ($actionContext.DryRun) {
-        $importedAccounts = $importedAccounts | Select-Object -First 10
-    }
-
-    foreach ($importedAccount in $importedAccounts) {
-        # Making sure only fieldMapping fields are imported
-        $data = @{}
-        foreach ($field in $actionContext.ImportFields) {
-            $data.$field = $importedAccount.$field
-        }
-
-        # Set Enabled based on importedAccount status
-        $isEnabled = $false
-        if ($null -ne $importedAccount.accessDisabled) {
-            $isEnabled = -not($importedAccount.accessDisabled)
-        }
-
-        # Make sure the displayName has a value
-        $displayName = "$($importedAccount.name)".trim()
-        if ([string]::IsNullOrEmpty($displayName)) {
-            $displayName = $importedAccount.id
-        }
-
-        # Make sure the userName has a value
-        $username = "$($importedAccount.email)".trim()
-        if ([string]::IsNullOrEmpty($importedAccount.email)) {
-            $username = $importedAccount.Id
-        }
-
-        # Return the result
-        Write-Output @{
-            AccountReference = $importedAccount.id
-            displayName      = $displayName
-            UserName         = $username
-            Enabled          = $isEnabled
-            Data             = $data
-        }
-    }
+    while ($count -eq 250)
+    Write-Information "Imported a total of $totalAccounts accounts from TripleEye"
     Write-Information 'TripleEye account entitlement import completed'
-} catch {
+}
+catch {
     $ex = $PSItem
     if ($($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or
         $($ex.Exception.GetType().FullName -eq 'System.Net.WebException')) {
         $errorObj = Resolve-TripleEyeError -ErrorObject $ex
         Write-Warning "Error at Line '$($errorObj.ScriptLineNumber)': $($errorObj.Line). Error: $($errorObj.ErrorDetails)"
         Write-Error "Could not import TripleEye account entitlements. Error: $($errorObj.FriendlyMessage)"
-    } else {
+    }
+    else {
         Write-Warning "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)"
         Write-Error "Could not import TripleEye account entitlements. Error: $($ex.Exception.Message)"
     }
