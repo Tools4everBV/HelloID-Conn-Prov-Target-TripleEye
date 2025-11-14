@@ -23,7 +23,8 @@ function Resolve-TripleEyeError {
         }
         if (-not [string]::IsNullOrEmpty($ErrorObject.ErrorDetails.Message)) {
             $httpErrorObj.ErrorDetails = $ErrorObject.ErrorDetails.Message
-        } elseif ($ErrorObject.Exception.GetType().FullName -eq 'System.Net.WebException') {
+        }
+        elseif ($ErrorObject.Exception.GetType().FullName -eq 'System.Net.WebException') {
             if ($null -ne $ErrorObject.Exception.Response) {
                 $streamReaderResponse = [System.IO.StreamReader]::new($ErrorObject.Exception.Response.GetResponseStream()).ReadToEnd()
                 if (-not [string]::IsNullOrEmpty($streamReaderResponse)) {
@@ -34,7 +35,8 @@ function Resolve-TripleEyeError {
         try {
             $errorDetailsObject = ($httpErrorObj.ErrorDetails | ConvertFrom-Json)
             $httpErrorObj.FriendlyMessage = $errorDetailsObject.error.message
-        } catch {
+        }
+        catch {
             $httpErrorObj.FriendlyMessage = "Error: [$($httpErrorObj.ErrorDetails)] [$($_.Exception.Message)]"
         }
         Write-Output $httpErrorObj
@@ -78,57 +80,68 @@ try {
     }
     $importedPermissions = Invoke-RestMethod @splatGetPermissions
 
-    # get accounts
-    $splatGetEmployees = @{
-        Uri     = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.HookId)/organisation/employees"
-        Method  = 'GET'
-        Headers = $headers
-    }
-    $importedAccounts = Invoke-RestMethod @splatGetEmployees
+    # get accounts with pagination and imported permissions
+    $skip = 250
+    do {
+        $filter = @{ skip = $skip } | ConvertTo-Json -Compress
+        $encodedFilter = [System.Web.HttpUtility]::UrlEncode($filter)
 
-    $importedAccountsWithPermissions = @()
-    foreach ($importedAccount in $importedAccounts) {
-        $splatGetEmployeesWithPermissions = @{
-            Uri     = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.HookId)/organisation/employees/$($importedAccount.id)/getPermissions"
+        $splatGetEmployees = @{
+            Uri     = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.HookId)/organisation/employees?filter=$encodedFilter"
             Method  = 'GET'
             Headers = $headers
         }
-        $importedAccountsWithPermissions += Invoke-RestMethod @splatGetEmployeesWithPermissions
-    }
+        $importedAccounts = Invoke-RestMethod @splatGetEmployees
+        $count = $importedAccounts.count
+        $skip += 250
 
-    foreach ($importedPermission in $importedPermissions) {
-        $accountReferences = @($importedAccountsWithPermissions | Where-Object { $_.departments -contains $importedPermission.id } | Select-Object -ExpandProperty id)
-
-        $permission = @{
-            PermissionReference = @{
-                Reference = $importedPermission.id
+        $importedAccountsWithPermissions = @()
+        foreach ($importedAccount in $importedAccounts) {
+            $splatGetEmployeesWithPermissions = @{
+                Uri     = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.HookId)/organisation/employees/$($importedAccount.id)/getPermissions"
+                Method  = 'GET'
+                Headers = $headers
             }
-            Description         = "$($importedPermission.name)"
-            DisplayName         = "$($importedPermission.name)"
-            AccountReferences   = $accountReferences
+            $importedAccountsWithPermissions += Invoke-RestMethod @splatGetEmployeesWithPermissions
         }
 
-        $accountsBatchSize = 500
-        $numberOfAccounts = $accountReferences.count
+        foreach ($importedPermission in $importedPermissions) {
+            $accountReferences = @($importedAccountsWithPermissions | Where-Object { $_.departments -contains $importedPermission.id } | Select-Object -ExpandProperty id)
 
-        if ($numberOfAccounts -gt 0) {
-            $batches = 0..($numberOfAccounts - 1) | Group-Object { [math]::Floor($_ / $accountsBatchSize) }
+            $permission = @{
+                PermissionReference = @{
+                    Reference = $importedPermission.id
+                }
+                Description         = "$($importedPermission.name)"
+                DisplayName         = "$($importedPermission.name)"
+                AccountReferences   = $accountReferences
+            }
 
-            foreach ($batch in $batches) {
-                $permission.AccountReferences = [array]($batch.Group | ForEach-Object { @($accountReferences[$_]) })
-                Write-Output $permission
+            $accountsBatchSize = 500
+            $numberOfAccounts = $accountReferences.count
+
+            if ($numberOfAccounts -gt 0) {
+                $batches = 0..($numberOfAccounts - 1) | Group-Object { [math]::Floor($_ / $accountsBatchSize) }
+
+                foreach ($batch in $batches) {
+                    $permission.AccountReferences = [array]($batch.Group | ForEach-Object { @($accountReferences[$_]) })
+                    Write-Output $permission
+                }
             }
         }
     }
+    while ($count -eq 250)
     Write-Information 'TripleEye permission group entitlement import completed'
-} catch {
+}
+catch {
     $ex = $PSItem
     if ($($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or
         $($ex.Exception.GetType().FullName -eq 'System.Net.WebException')) {
         $errorObj = Resolve-TripleEyeError -ErrorObject $ex
         Write-Warning "Error at Line '$($errorObj.ScriptLineNumber)': $($errorObj.Line). Error: $($errorObj.ErrorDetails)"
         Write-Error "Could not import TripleEye permission group entitlements. Error: $($errorObj.FriendlyMessage)"
-    } else {
+    }
+    else {
         Write-Warning "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)"
         Write-Error "Could not import TripleEye permission group entitlements. Error: $($ex.Exception.Message)"
     }
